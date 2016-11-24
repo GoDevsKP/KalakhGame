@@ -1,4 +1,4 @@
-package board
+package game
 
 import (
   "fmt"
@@ -126,36 +126,6 @@ func validate_step(from int, board *PlayerBoard) bool {
     return false
   }
   return true
-}
-
-
-// Player Board structure
-
-type PlayerBoard struct {
-  Score int
-  Holes []int
-}
-
-func NewPlayerBoard() *PlayerBoard {
-  new_board := &PlayerBoard{}
-  new_board.Score = 0
-  new_board.Holes = []int{ 0,0,0,2,0,0 }
-  return new_board
-}
-
-
-// Player structure
-
-type Player struct {
-  Id int
-  Enemy *Player
-  Board *PlayerBoard
-}
-
-
-func NewPlayer(id int) *Player {
-  new_player := &Player{ Id: id }
-  return new_player
 }
 
 

@@ -1,4 +1,4 @@
-package board
+package game
 
 const (
   USER_BOARD_LENGTH int = 6
