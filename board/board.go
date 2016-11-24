@@ -4,27 +4,14 @@ import (
   "fmt"
 )
 
-type StepStatus int
-
-const (
-  TurnNextPlayer StepStatus = 1
-  Repeat StepStatus = 2
-  Win StepStatus = 3
-)
-
-
-type GameStatus int
-
-const (
-  PLAYING GameStatus = 1
-  END GameStatus = 2
-)
-
+// Game
 
 type Game struct {
   ActivePlayer *Player
   Status GameStatus
+  Winner *Player
 }
+
 
 func (g *Game) Init(p1, p2 *Player) {
   p1.Board = NewPlayerBoard()
@@ -36,84 +23,123 @@ func (g *Game) Init(p1, p2 *Player) {
 
 func (g *Game) NextStep(from int) StepStatus {
   actor := g.ActivePlayer
-  num_stones := actor.Board.holes[from]
-  actor.Board.holes[from] = 0
+
+  if !validate_step(from, actor.Board) {
+    return Invalid
+  }
+
+  num_stones := actor.Board.Holes[from]
+  actor.Board.Holes[from] = 0
   pos := from + 1
 
   for ; num_stones > 0; {
+    // Firstly, fill actor board with stoles
     pos, num_stones = fill_stones(actor.Board, pos, num_stones)
 
-    if num_stones == 0 && actor.Board.holes[pos] == 1 {
-      fmt.Printf("pos =%v", pos)
-      actor.Board.score += actor.Enemy.Board.holes[6-pos-1] + 1
-      actor.Enemy.Board.holes[6-pos-1] = 0
-      actor.Board.holes[pos] = 0
+    // If actor finished his move at own empty pit,
+    // sow the pits from enimie's opposite pit
+    if num_stones == 0 && actor.Board.Holes[pos] == 1 {
+      actor.Board.Score += actor.Enemy.Board.Holes[USER_BOARD_LENGTH - pos - 1] + 1
+      actor.Enemy.Board.Holes[USER_BOARD_LENGTH - pos - 1] = 0
+      actor.Board.Holes[pos] = 0
     }
+
+    // If stones left, fill actor kalakh
     if num_stones > 0 {
-      actor.Board.score++
-      if actor.Board.score > 36 {
+      actor.Board.Score++
+      if CheckForWin(actor.Board.Score) {
+        g.Winner = actor
         return Win
       }
+
       num_stones--
       pos = 0
 
       if num_stones == 0 {
-        fmt.Printf("Repeat")
         return Repeat
       }
     }
+
     if num_stones > 0 {
-      pos, num_stones = fill_stones(actor.Enemy.Board, pos, num_stones)
+      _, num_stones = fill_stones(actor.Enemy.Board, pos, num_stones)
       pos = 0
     }
 
+
+    // check for win, if one of players has no pits
+    if get_total_board_score(actor.Board) == 0 || get_total_board_score(actor.Enemy.Board) == 0 {
+      actor.Enemy.Board.Score += get_total_board_score(actor.Enemy.Board)
+      actor.Board.Score += get_total_board_score(actor.Board)
+      fill_board_with_zeros(actor.Enemy.Board)
+      fill_board_with_zeros(actor.Board)
+
+      if actor.Board.Score > actor.Enemy.Board.Score {
+        g.Winner = actor
+      }
+      if actor.Board.Score < actor.Enemy.Board.Score {
+        g.Winner = actor.Enemy
+      }
+      if actor.Board.Score == actor.Enemy.Board.Score {
+        return Draw
+      }
+
+      return Win
+    }
   }
 
-
-  fmt.Printf("%v\n", actor.Board.holes)
-  fmt.Printf("%v\n", actor.Enemy.Board.holes)
-  fmt.Printf("%v-", actor.Board.score)
-  fmt.Printf("%v\n***\n", actor.Enemy.Board.score)
-
   return TurnNextPlayer
-
 }
 
 
 func fill_stones(board *PlayerBoard, from int, stones int) (int,int){
   var left = stones
   var pos int
-  for pos = from; pos < 6 && left > 0; pos++ {
-    board.holes[pos] += 1
+  for pos = from; pos < USER_BOARD_LENGTH && left > 0; pos++ {
+    board.Holes[pos] += 1
     left--
   }
   return pos - 1, left
-
 }
 
-func (g *Game) UpdateState(status StepStatus){
-  if status == Win {
-    fmt.Printf("Win")
-  }
-  if status == TurnNextPlayer {
-    g.ActivePlayer = g.ActivePlayer.Enemy
 
+func get_total_board_score(board *PlayerBoard) int {
+  var sum int = 0
+  for  i := 0; i < USER_BOARD_LENGTH; i++ {
+    sum += board.Holes[i]
+  }
+  return sum
+}
+
+
+func fill_board_with_zeros(board *PlayerBoard) {
+  for i := 0; i < USER_BOARD_LENGTH; i++ {
+    board.Holes[i] = 0
   }
 }
 
+
+func validate_step(from int, board *PlayerBoard) bool {
+  if from > USER_BOARD_LENGTH - 1 || from < 0 {
+    return false
+  }
+  if board.Holes[from] == 0 {
+    return false
+  }
+  return true
+}
 
 
 // Player Board structure
 
 type PlayerBoard struct {
-  score int
-  holes [6]int
+  Score int
+  Holes []int
 }
 
 func NewPlayerBoard() *PlayerBoard {
   new_board := &PlayerBoard{}
-  new_board.score = 0
-  new_board.holes = [6]int{ 6,13,0,6,6,6 }
+  new_board.Score = 0
+  new_board.Holes = []int{ 0,0,0,2,0,0 }
   return new_board
 }
 
@@ -121,13 +147,29 @@ func NewPlayerBoard() *PlayerBoard {
 // Player structure
 
 type Player struct {
-  id int
+  Id int
   Enemy *Player
   Board *PlayerBoard
 }
 
 
 func NewPlayer(id int) *Player {
-  new_player := &Player{ id: id }
+  new_player := &Player{ Id: id }
   return new_player
+}
+
+
+func (g *Game) PrintBoard(){
+
+  fmt.Printf("%v\n", reverseInts(g.ActivePlayer.Enemy.Board.Holes))
+  fmt.Printf("%v\n", g.ActivePlayer.Board.Holes)
+  fmt.Printf("%v-", g.ActivePlayer.Board.Score)
+  fmt.Printf("%v\n***\n", g.ActivePlayer.Enemy.Board.Score)
+}
+
+func reverseInts(input []int) []int {
+  if len(input) == 0 {
+    return input
+  }
+  return append(reverseInts(input[1:]), input[0])
 }
