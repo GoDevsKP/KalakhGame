@@ -11,7 +11,7 @@ type PlayerBoard struct {
 func NewPlayerBoard() *PlayerBoard {
   new_board := &PlayerBoard{}
   new_board.Score = 0
-  new_board.Holes = []int{ 0,0,0,2,0,0 }
+  new_board.Holes = []int{ 6,6,6,6,6,6 }
   return new_board
 }
 
